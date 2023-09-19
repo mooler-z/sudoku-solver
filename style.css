@@ -1,0 +1,32 @@
+div.grids {
+  margin: 0 auto;
+  width: 44vw;
+}
+
+span.grid {
+  width: 1em;
+  height: 1em;
+  /* border-left: 3px solid #eee; */
+  /* border-bottom: 3px solid #eee; */
+  /* border: 2px solid #003049; */
+  font-size: 12px;
+  cursor: pointer;
+  font-size: 3em;
+  padding: 0 .1em;
+  margin: 0 .3em;
+}
+
+span.grid:hover {
+  background-color: rgb(242, 234, 250);
+}
+
+.divider {
+  border-left: 3px solid #eee;
+  border-bottom: 3px solid #eee;
+}
+
+div#status {
+  font-size: 4em;
+  font-weight: bolder;
+  text-align: center;
+}
