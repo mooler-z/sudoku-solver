@@ -10,6 +10,7 @@ const MOVE_COLOR = "#33ffff";
 
 // states
 let sudoku;
+let sudokuClone;
 let animationSpeed = 6;
 
 let solutionPath = {};
@@ -17,11 +18,11 @@ let totalMove = 0;
 
 // events
 window.addEventListener("load", function () {
-  let randN = 6;
+  let randN = 5;
   // let randN = Math.floor(Math.random() * 9);
-  console.log(randN)
   let sudo = sudokusList[randN];
   sudoku = JSON.parse(JSON.stringify(sudo));
+  sudokuClone = JSON.parse(JSON.stringify(sudo));
 
   getToWorking();
 });
@@ -197,7 +198,7 @@ function getSubSquare(arr, sqrt) {
 }
 
 function getMaxQuadrant() {
-  let quadrants = getQuadrants();
+  let quadrants = getQuadrants(sudoku);
 
   let count = 0;
   let max;
@@ -216,22 +217,22 @@ function getMaxQuadrant() {
   return [quadN, max];
 }
 
-function getWhichQuadrant(move) {
+function getWhichQuadrant(move, arr) {
   let [n, m] = move.split("-");
   n = +n;
   m = +m;
-  let sqrt = Math.floor(Math.sqrt(sudoku.length));
+  let sqrt = Math.floor(Math.sqrt(arr.length));
   let qn = Math.floor(n / sqrt) * sqrt + Math.floor(m / sqrt);
-  return [qn, getQuadrants()[qn]];
+  return [qn, getQuadrants(arr)[qn]];
 }
 
-function getQuadrants() {
-  let quads = JSON.parse(JSON.stringify(sudoku));
+function getQuadrants(arr) {
+  let quads = JSON.parse(JSON.stringify(arr));
   quads = quads.map(() => []);
-  let sqrt = Math.floor(Math.sqrt(sudoku.length));
+  let sqrt = Math.floor(Math.sqrt(arr.length));
 
-  for (let i = 0; i < sudoku.length; i++) {
-    let twoD = getHorSqrt(sqrt, sudoku[i]);
+  for (let i = 0; i < arr.length; i++) {
+    let twoD = getHorSqrt(sqrt, arr[i]);
     quads[i] = twoD;
   }
 
@@ -343,24 +344,56 @@ function getVerticalSingle(m) {
   return arr;
 }
 
-function handleRearranging(move) {
-  let [n, m] = move.split("-");
-  let [qn, quad] = getWhichQuadrant(move);
-  // let mergeQuad =
-  let quadMoves = getQuadMoves(qn);
-  let hor = getHorizontalSingle(+n);
-  let horMoves = getOptimalHorizontal(+n);
-  let ver = getVerticalSingle(+m);
-  let verMoves = getOptimalVertical(+m);
+function getSudokuNums() {
+  let arr = [];
+  for (let i = 1; i < sudoku.length; i++) arr.push(i);
+  return arr;
+}
 
-  console.log(quadMoves);
-  console.log(verMoves);
-  console.log(horMoves);
+function rearrQuad(move) {
+  let [m, n] = move.split("-");
+  const sudokuNums = getSudokuNums();
+  let [qn, quad] = getWhichQuadrant(move, sudoku);
+  let [ogqn, ogquad] = getWhichQuadrant(move, sudokuClone);
+  let hor = getHorizontalSingle(+m);
+  let ver = getVerticalSingle(+n);
+
+  for (let i = 0; i < quad.length; i++) {
+    for (let j = 0; j < quad[i].length; j++) {
+      if (!ogquad[i][j] && quad[i][j]) {
+        console.log(ogquad)
+        console.log(quad[i][j]);
+      }
+    }
+  }
+}
+
+function handleRearranging(move) {
+  let [m, n] = move.split("-");
+  let [qn, quad] = getWhichQuadrant(move, sudoku);
+  let mergeQuad = quad.reduce((merged, val) => merged.concat(val), []);
+  let quadMoves = getQuadMoves(qn);
+  let hor = getHorizontalSingle(+m);
+  let horMoves = getOptimalHorizontal(+m);
+  let ver = getVerticalSingle(+n);
+  let verMoves = getOptimalVertical(+n);
+
+  const qlen = mergeQuad.filter((num) => num);
+  const vlen = ver.filter((num) => num);
+  const hlen = hor.filter((num) => num);
+
+  if (qlen.length >= vlen.length && qlen.length >= hlen.length) {
+    rearrQuad(move);
+  } else if (hlen.length >= qlen.length && hlen.length >= vlen.length) {
+    console.log("REARRANGE HORIZONTAL");
+  } else if (vlen.length >= qlen.length && vlen.length >= hlen.length) {
+    console.log("REARRANGE VERTICAL");
+  }
 }
 
 function getAllSingles() {
   let { move } = getOptimalIntersection();
-  let [qn, quad] = getWhichQuadrant(move);
+  let [qn, quad] = getWhichQuadrant(move, sudoku);
   quad = quad.reduce((merged, val) => merged.concat(val), []);
   let hor = getHorizontalSingle(+move.split("-")[0]);
   let ver = getVerticalSingle(+move.split("-")[1]);
