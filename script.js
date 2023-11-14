@@ -11,14 +11,15 @@ const MOVE_COLOR = "#33ffff";
 // states
 let sudoku;
 let sudokuClone;
-let animationSpeed = 16;
+let animationSpeed = 32;
+// let animationSpeed = 6;
 
 let solutionPath = {};
 let totalMove = 0;
 
 // events
 window.addEventListener("load", function () {
-  let randN = 4;
+  let randN = 0;
   // let randN = Math.floor(Math.random() * 9);
   let sudo = sudokusList[randN];
   sudoku = JSON.parse(JSON.stringify(sudo));
@@ -89,13 +90,47 @@ function getVertical() {
   return [min, +ver];
 }
 
-function getVerticalSingle(m) {
+function getVerticalSingle(m, from) {
   let arr = [];
-  for (let i = 0; i < sudoku.length; i++) {
-    arr.push(sudoku[i][m]);
+  for (let i = 0; i < from.length; i++) {
+    arr.push(from[i][m]);
   }
 
   return arr;
+}
+
+function rearrVer(move) {
+  let [ml, nl] = move.split("-");
+  let ver = getVerticalSingle(+nl, sudoku);
+  let ogver = getVerticalSingle(+nl, sudokuClone);
+  let possibleVers = ver.filter((n) => !ogver.includes(n) || !n);
+
+  for (let i = 0; i < possibleVers.length; i++) {
+    for (let j = i + 1; j < possibleVers.length; j++) {
+      let ipos = ver.indexOf(possibleVers[i]);
+      let jpos = ver.indexOf(possibleVers[j]);
+      let [qn, quad] = getWhichQuadrant(`${jpos}-${+nl}`, sudoku);
+      let [qni, quadi] = getWhichQuadrant(`${ipos}-${+nl}`, sudoku);
+      let [sqn, sameQuads] = getWhichQuadrant(move, sudoku);
+
+      let hor = getHorizontalSingle(jpos, sudoku);
+      let hori = getHorizontalSingle(ipos, sudoku);
+
+      quad = quad.reduce((total, val) => total.concat(val), []);
+      quadi = quadi.reduce((total, val) => total.concat(val), []);
+
+      if (!possibleVers[i]) {
+        let hbool = !hori.includes(possibleVers[j]);
+        let qbool = qni !== sqn ? !quad.includes(possibleVers[j]) : true;
+        if (hbool && qbool) {
+          let temp = sudoku[ml][nl];
+          sudoku[ml][nl] = possibleVers[j];
+          sudoku[jpos][nl] = temp;
+        }
+      }
+    }
+  }
+  console.log("END VER");
 }
 
 ////////////////////////////////////////
@@ -137,13 +172,163 @@ function getHorSqrt(sqrt, hor) {
   return twoD;
 }
 
-function getHorizontalSingle(n) {
+function getHorizontalSingle(n, from) {
   let arr = [];
-  for (let i = 0; i < sudoku.length; i++) {
-    arr.push(sudoku[n][i]);
+  for (let i = 0; i < from.length; i++) {
+    arr.push(from[n][i]);
   }
 
   return arr;
+}
+
+function dummyVertical(nl) {
+  let ver = getVerticalSingle(+nl, sudoku);
+  let ogver = getVerticalSingle(+nl, sudokuClone);
+  let possibleVers = ver.filter((n) => !ogver.includes(n) || !n);
+
+  debugger;
+
+  for (let i = 0; i < ver.length; i++) {
+    for (let j = i + 1; j < ver.length; j++) {
+      let [qni, quadi] = getWhichQuadrant(`${i}-${+nl}`, sudoku);
+      quadi = quadi.reduce((total, val) => total.concat(val), []);
+      let hori = getHorizontalSingle(j, sudoku);
+      const poss = possibleVers.includes(sudoku[i][+nl]);
+      const qposs = !quadi.includes(sudoku[i][+nl]);
+      const hposs = !hori.includes(sudoku[i][+nl]);
+      if (poss && qposs && hposs || !sudoku[i][+nl]) {
+        if (sudoku[i][+nl]) {
+          let [qnj, quadj] = getWhichQuadrant(`${i}-${+nl}`, sudoku);
+          quadj = quadj.reduce((total, val) => total.concat(val), []);
+          let verj = getHorizontalSingle(i, sudoku);
+          const qpossj = !quadj.includes(sudoku[j][+nl]);
+          const hpossj = !verj.includes(sudoku[j][+nl]);
+          const possj = possibleVers.includes(sudoku[j][+nl]);
+
+          if (qpossj && hpossj && possj) {
+            let tempNum = sudoku[i][+nl];
+            sudoku[i][+nl] = sudoku[j][+nl];
+            sudoku[j][+nl] = tempNum;
+            i++;
+          }
+        } else {
+          for (let z = 0; z < ver.length; z++) {
+            let [qnz, quadz] = getWhichQuadrant(`${i}-${+nl}`, sudoku);
+            quadz = quadz.reduce((total, val) => total.concat(val), []);
+            quadz = quadz.filter((n) => n);
+            let verz = getHorizontalSingle(i, sudoku);
+            verz = verz.filter((n) => n);
+            const qpossz = !quadz.includes(sudoku[z][+nl]);
+            const hpossz = !verz.includes(sudoku[z][+nl]);
+            const possz = possibleVers.includes(sudoku[z][+nl]);
+            if (qpossz && hpossz && possz) {
+              let tempNum = sudoku[i][+nl];
+              sudoku[i][+nl] = sudoku[z][+nl];
+              sudoku[z][+nl] = tempNum;
+            }
+          }
+        }
+      }
+    }
+  }
+  markAll();
+}
+
+function dummy(ml) {
+  let hor = getHorizontalSingle(+ml, sudoku);
+  let oghor = getHorizontalSingle(+ml, sudokuClone);
+  let possibleHors = hor.filter((n) => !oghor.includes(n) || !n);
+
+  for (let i = 0; i < hor.length; i++) {
+    for (let j = i + 1; j < hor.length; j++) {
+      let [qni, quadi] = getWhichQuadrant(`${+ml}-${j}`, sudoku);
+      quadi = quadi.reduce((total, val) => total.concat(val), []);
+      let veri = getVerticalSingle(j, sudoku);
+      const poss = possibleHors.includes(sudoku[+ml][i]);
+      const qposs = !quadi.includes(sudoku[+ml][i]);
+      const vposs = !veri.includes(sudoku[+ml][i]);
+      if (poss && qposs && vposs || !sudoku[+ml][i]) {
+        if (sudoku[+ml][i]) {
+          let [qnj, quadj] = getWhichQuadrant(`${+ml}-${i}`, sudoku);
+          quadj = quadj.reduce((total, val) => total.concat(val), []);
+          let verj = getVerticalSingle(i, sudoku);
+          const qpossj = !quadj.includes(sudoku[+ml][j]);
+          const vpossj = !verj.includes(sudoku[+ml][j]);
+          const possj = possibleHors.includes(sudoku[+ml][j]);
+
+          if (qpossj && vpossj && possj) {
+            let tempNum = sudoku[+ml][i];
+            sudoku[+ml][i] = sudoku[+ml][j];
+            sudoku[+ml][j] = tempNum;
+            i++;
+          }
+        } else {
+          for (let z = 0; z < hor.length; z++) {
+            let [qnz, quadz] = getWhichQuadrant(`${+ml}-${i}`, sudoku);
+            quadz = quadz.reduce((total, val) => total.concat(val), []);
+            quadz = quadz.filter((n) => n);
+            let verz = getVerticalSingle(i, sudoku);
+            verz = verz.filter((n) => n);
+            const qpossz = !quadz.includes(sudoku[+ml][z]);
+            const vpossz = !verz.includes(sudoku[+ml][z]);
+            const possz = possibleHors.includes(sudoku[+ml][z]);
+            if (qpossz && vpossz && possz) {
+              let tempNum = sudoku[+ml][i];
+              sudoku[+ml][i] = sudoku[+ml][z];
+              sudoku[+ml][z] = tempNum;
+            }
+          }
+        }
+      }
+    }
+  }
+  markAll();
+}
+
+function dumbRearrHor(move) {
+  for (let i = 0; i < sudoku.length; i++) {
+    dummy(i);
+  }
+}
+
+function dumbRearrVer(move) {
+  for (let i = 0; i < sudoku.length; i++) {
+    dummyVertical(i);
+  }
+}
+
+function rearrHor(move) {
+  let [ml, nl] = move.split("-");
+  let hor = getHorizontalSingle(+ml, sudoku);
+  let oghor = getHorizontalSingle(+ml, sudokuClone);
+  let possibleHors = hor.filter((n) => !oghor.includes(n) || !n);
+
+  for (let i = 0; i < possibleHors.length; i++) {
+    for (let j = i + 1; j < possibleHors.length; j++) {
+      let ipos = hor.indexOf(possibleHors[i]);
+      let jpos = hor.indexOf(possibleHors[j]);
+      let [qn, quad] = getWhichQuadrant(`${jpos}-${+nl}`, sudoku);
+      let [qni, quadi] = getWhichQuadrant(`${ipos}-${+nl}`, sudoku);
+      let [sqn, sameQuads] = getWhichQuadrant(move, sudoku);
+
+      let ver = getVerticalSingle(jpos, sudoku);
+      let veri = getVerticalSingle(ipos, sudoku);
+
+      quad = quad.reduce((total, val) => total.concat(val), []);
+      quadi = quadi.reduce((total, val) => total.concat(val), []);
+
+      if (!possibleHors[i]) {
+        let vbool = !veri.includes(possibleHors[j]);
+        let qbool = qni !== sqn ? !quad.includes(possibleHors[j]) : true;
+        if (vbool && qbool) {
+          let temp = sudoku[ml][nl];
+          sudoku[ml][nl] = possibleHors[j];
+          sudoku[jpos][nl] = temp;
+        }
+      }
+    }
+  }
+  console.log("END HOR");
 }
 
 ////////////////////////////////////////
@@ -262,9 +447,7 @@ function getQuadrants(arr) {
   return quadrants;
 }
 
-function rearrQuad(move) {
-  let [ml, nl] = move.split("-");
-  const sudokuNums = getSudokuNums();
+function getQuadPossibleShuffles(move) {
   let [qn, quad] = getWhichQuadrant(move, sudoku);
   let [ogqn, ogquad] = getWhichQuadrant(move, sudokuClone);
   let { sqrt, start, n, m } = getQuadLooping(qn);
@@ -281,6 +464,13 @@ function rearrQuad(move) {
     }
   }
 
+  return possibleShuffles;
+}
+
+function rearrQuad(move) {
+  console.log("START QUAD");
+  let possibleShuffles = getQuadPossibleShuffles(move);
+
   let unoccupied = possibleShuffles.filter((x) => !x.num);
   possibleShuffles = possibleShuffles.filter((x) => x.num);
 
@@ -288,8 +478,8 @@ function rearrQuad(move) {
     for (let j = 0; j < unoccupied.length; j++) {
       let [_m, _n] = unoccupied[j].move.split("-");
 
-      let hor = getHorizontalSingle(+_m);
-      let ver = getVerticalSingle(+_n);
+      let hor = getHorizontalSingle(+_m, sudoku);
+      let ver = getVerticalSingle(+_n, sudoku);
 
       for (let i = 0; i < possibleShuffles.length; i++) {
         if (
@@ -300,7 +490,6 @@ function rearrQuad(move) {
           let [pm, pn] = possibleShuffles[i].move.split("-");
           sudoku[pm][pn] = unoccupied[j].num;
           sudoku[_m][_n] = possibleShuffles[i].num;
-          sudokuClone[_m][_n] = possibleShuffles[i].num;
           return true;
         }
       }
@@ -313,10 +502,10 @@ function rearrQuad(move) {
       let [m2, n2] = possibleShuffles[j].move.split("-");
 
       if (m1 === m2) {
-        console.log("VERTICAL");
-        let ver1 = getVerticalSingle(+n1);
+        // console.log("VERTICAL");
+        let ver1 = getVerticalSingle(+n1, sudoku);
         ver1[m1] = 0;
-        let ver2 = getVerticalSingle(+n2);
+        let ver2 = getVerticalSingle(+n2, sudoku);
         ver2[m2] = 0;
 
         let bool = !ver2.includes(possibleShuffles[i].num) &&
@@ -329,10 +518,10 @@ function rearrQuad(move) {
           return true;
         }
       } else if (n1 === n2) {
-        console.log("HORIZONTAL");
-        let hor1 = getHorizontalSingle(+m1);
+        //console.log("HORIZONTAL");
+        let hor1 = getHorizontalSingle(+m1, sudoku);
         hor1[n1] = 0;
-        let hor2 = getHorizontalSingle(+m2);
+        let hor2 = getHorizontalSingle(+m2, sudoku);
         hor2[n2] = 0;
         let bool = !hor2.includes(possibleShuffles[i].num) &&
           !hor1.includes(possibleShuffles[j].num);
@@ -343,10 +532,11 @@ function rearrQuad(move) {
           return true;
         }
       } else if (m1 !== m2 && n1 !== n2) {
-        console.log("BOTH");
+        //console.log("BOTH");
       }
     }
   }
+  console.log("END QUAD");
 }
 
 ////////////////////////////////////////
@@ -360,28 +550,11 @@ function getSudokuNums() {
 }
 
 function handleRearranging(move) {
-  let [m, n] = move.split("-");
-  let [qn, quad] = getWhichQuadrant(move, sudoku);
-  let mergeQuad = quad.reduce((merged, val) => merged.concat(val), []);
-  let quadMoves = getQuadMoves(qn);
-  let hor = getHorizontalSingle(+m);
-  let horMoves = getOptimalHorizontal(+m);
-  let ver = getVerticalSingle(+n);
-  let verMoves = getOptimalVertical(+n);
-
-  const qlen = mergeQuad.filter((num) => num);
-  const vlen = ver.filter((num) => num);
-  const hlen = hor.filter((num) => num);
-
-  console.log("QUAD REARRANGE");
-  if (!rearrQuad(move)) return;
-
-  if (qlen.length >= vlen.length && qlen.length >= hlen.length) {
-  } else if (hlen.length >= qlen.length && hlen.length >= vlen.length) {
-    console.log("REARRANGE HORIZONTAL");
-  } else if (vlen.length >= qlen.length && vlen.length >= hlen.length) {
-    console.log("REARRANGE VERTICAL");
-  }
+  // rearrQuad(move);
+  // rearrVer(move);
+  // rearrHor(move);
+  dumbRearrHor();
+  // dumbRearrVer();
 }
 
 function markAll() {
@@ -426,6 +599,16 @@ function markAll() {
       }, 1000 / animationSpeed);
     }
   }, 1000 / animationSpeed);
+}
+
+function getUnfilled() {
+  let move;
+  for (let i = 0; i < sudoku.length; i++) {
+    for (let j = 0; j < sudoku[i].length; j++) {
+      if (!sudoku[i][j]) return `${i}-${j}`;
+    }
+  }
+  return move;
 }
 
 function getOptimalIntersection() {
@@ -478,11 +661,13 @@ function createGrids(parent, sudoku) {
 }
 
 function getAllSingles() {
-  let { move } = getOptimalIntersection();
+  // let { move } = getOptimalIntersection();
+  // move = !move ? getUnfilled() : move;
+  let move = getUnfilled();
   let [qn, quad] = getWhichQuadrant(move, sudoku);
   quad = quad.reduce((merged, val) => merged.concat(val), []);
-  let hor = getHorizontalSingle(+move.split("-")[0]);
-  let ver = getVerticalSingle(+move.split("-")[1]);
+  let hor = getHorizontalSingle(+move.split("-")[0], sudoku);
+  let ver = getVerticalSingle(+move.split("-")[1], sudoku);
 
   let all = quad.concat(hor, ver);
   let bestNum = 0;
@@ -500,11 +685,11 @@ function getAllSingles() {
       n: bestNum,
     };
   } else {
-    console.log("STUCK AT", move, solutionPath);
+    //console.log("STUCK AT", move, solutionPath);
     statusElt.innerText = "Rearraging logic...";
     handleRearranging(move);
   }
-  console.log("----------------");
+  //console.log("----------------");
   setTimeout(() => {
     document.querySelector(`span#col-${move}`).style.background = MOVE_COLOR;
     statusElt.innerText = `CELL - ${move} >>> ${bestNum}`;
